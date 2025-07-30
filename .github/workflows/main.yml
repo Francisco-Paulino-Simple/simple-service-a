@@ -5,7 +5,7 @@ on:
     branches: [ "main" ]
 
 env:
-  IMAGE_NAME: ghcr.io/Francisco-Paulino-Simple/simple-service-a
+  IMAGE_NAME: ghcr.io/francisco-paulino-simple/simple-service-a
   INFRA_REPO_URL: https://github.com/Francisco-Paulino-Simple/ci-cd-infra.git
 
 jobs:
