@@ -42,25 +42,21 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            # --- PASSO ADICIONADO ---
-            # Loga o Docker da VPS no GitHub Container Registry.
-            # O --password-stdin é a forma mais segura de passar o token.
+            echo "--- Logando no GHCR ---"
             echo ${{ secrets.DOCKER_PAT }} | docker login ghcr.io -u ${{ secrets.DOCKER_ORG_USER }} --password-stdin
-            # --- FIM DA ADIÇÃO ---
-
-            # O resto do script continua o mesmo
+            
             INFRA_DIR="/home/deployer/ci-cd-infra"
             
-            if [ -d "$INFRA_DIR" ]; then
-              cd "$INFRA_DIR"
-              git pull
-            else
-              git clone ${{ env.INFRA_REPO_URL }} "$INFRA_DIR"
-              cd "$INFRA_DIR"
-            fi
+            echo "--- Navegando para a pasta de infra ---"
+            cd "$INFRA_DIR"
             
-            echo "Atualizando o Serviço..."
-            # Para o service-a, use 'service-a'. Para o service-b, use 'service-b'.
-            docker compose up -d service-a
+            echo "--- Forçando o download da nova imagem do registro ---"
+            # ESTE É O COMANDO CRÍTICO QUE FORÇA A ATUALIZAÇÃO DA IMAGEM
+            docker compose pull service-a
             
+            echo "--- Recriando o contêiner com a nova imagem ---"
+            # O --no-deps garante que apenas o service-a seja recriado
+            docker compose up -d --no-deps service-a
+            
+            echo "--- Limpando imagens antigas ---"
             docker image prune -af
