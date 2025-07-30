@@ -42,10 +42,15 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            # Define o diretório de trabalho
-            INFRA_DIR="/home/deployer/ci-cd-infra"
+            # --- PASSO ADICIONADO ---
+            # Loga o Docker da VPS no GitHub Container Registry.
+            # O --password-stdin é a forma mais segura de passar o token.
+            echo ${{ secrets.DOCKER_PAT }} | docker login ghcr.io -u ${{ secrets.DOCKER_ORG_USER }} --password-stdin
+            # --- FIM DA ADIÇÃO ---
 
-            # Verifica se o diretório existe. Se não, clona. Se sim, atualiza.
+            # O resto do script continua o mesmo
+            INFRA_DIR="/home/deployer/ci-cd-infra"
+            
             if [ -d "$INFRA_DIR" ]; then
               cd "$INFRA_DIR"
               git pull
@@ -54,9 +59,8 @@ jobs:
               cd "$INFRA_DIR"
             fi
             
-            # O comando 'up' irá baixar a nova imagem e recriar o contêiner
-            echo "Atualizando o Serviço A..."
+            echo "Atualizando o Serviço..."
+            # Para o service-a, use 'service-a'. Para o service-b, use 'service-b'.
             docker compose up -d service-a
             
-            # Limpa imagens antigas e não utilizadas
             docker image prune -af
