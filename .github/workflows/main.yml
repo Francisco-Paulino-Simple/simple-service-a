@@ -1,0 +1,62 @@
+name: CI/CD para Servico A
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  IMAGE_NAME: ghcr.io/Francisco-Paulino-Simple/simple-service-a
+  INFRA_REPO_URL: https://github.com/Francisco-Paulino-Simple/ci-cd-infra.git
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout do codigo
+        uses: actions/checkout@v4
+      - name: Login no GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.DOCKER_ORG_USER }}
+          password: ${{ secrets.DOCKER_PAT }}
+      - name: Build e Push da imagem Docker
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:latest
+
+  deploy:
+    needs: build_and_push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy na VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            # Define o diretório de trabalho
+            INFRA_DIR="/home/deployer/ci-cd-infra"
+
+            # Verifica se o diretório existe. Se não, clona. Se sim, atualiza.
+            if [ -d "$INFRA_DIR" ]; then
+              cd "$INFRA_DIR"
+              git pull
+            else
+              git clone ${{ env.INFRA_REPO_URL }} "$INFRA_DIR"
+              cd "$INFRA_DIR"
+            fi
+            
+            # O comando 'up' irá baixar a nova imagem e recriar o contêiner
+            echo "Atualizando o Serviço A..."
+            docker compose up -d service-a
+            
+            # Limpa imagens antigas e não utilizadas
+            docker image prune -af
